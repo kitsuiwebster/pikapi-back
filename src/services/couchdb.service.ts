@@ -1,56 +1,60 @@
 import { Injectable } from '@nestjs/common';
 import * as Nano from 'nano';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
 
 @Injectable()
 export class CouchDbService {
-  private readonly db: Nano.DocumentScope<any>;
+  private readonly nano: Nano.DocumentScope<any>;
 
   constructor() {
-    const nano = Nano({
-      url: process.env.COUCHDB_URL,
-      requestDefaults: {
-        auth: {
-          username: process.env.COUCHDB_USER,
-          password: process.env.COUCHDB_PASSWORD,
-        },
-      },
-    });
+    const db = Nano(process.env.COUCHDB_URL);
 
-    this.db = nano.db.use(process.env.COUCHDB_DBNAME);
+    this.nano = db.use('pikapi');
   }
+
 
   async createDoc(docType: string, doc: any): Promise<any> {
     try {
-      const response = await this.db.insert({
+      const response = await this.nano.insert({
         _id: `${docType}:${doc._id}`,
         type: docType,
         ...doc,
       });
+      console.log('Document created in CouchDB:', response); // Log the CouchDB response
       return response;
     } catch (error) {
-      // Handle or throw the error accordingly
-      throw new Error('Unable to create document');
+      console.error('Error creating CouchDB document:', error); // Log the CouchDB error
+      throw error; // Re-throw to be handled by the caller
     }
   }
+  
+  
 
   async findDoc(docType: string, field: string, value: string): Promise<any> {
     try {
-      const response = await this.db.view('byTypeAndField', 'byField', {
+      // Here you should reference the correct design document and view name
+      // Change 'designDoc' to 'user_queries' and 'byField' to 'byUsernameOrEmail'
+      const response = await this.nano.view('user_queries', 'byUsernameOrEmail', {
         key: [docType, field, value],
+        include_docs: true
       });
       if (response.rows.length === 0) {
         return undefined;
       }
-      return response.rows[0].value;
+      return response.rows[0].doc; // Use .doc to get the actual document
     } catch (error) {
-      // Handle or throw the error accordingly
-      throw new Error('Unable to find document');
+      console.error('Error finding document in CouchDB:', error);
+      throw error;
     }
   }
+  
 
   async findAll(): Promise<any[]> {
     try {
-      const result = await this.db.list({ include_docs: true });
+      const result = await this.nano.list({ include_docs: true });
       return result.rows.map((row) => row.doc);
     } catch (error) {
       // Handle or throw the error accordingly
