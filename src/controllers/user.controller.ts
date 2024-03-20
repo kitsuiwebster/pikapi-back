@@ -36,7 +36,6 @@ export class UserController {
   @Post('login')
   async login(@Body() body: any, @Res() res: Response) {
     console.log("Login method hit");
-    console.log("UUUUUUUsing JWT secret: ", process.env.JWT_SECRET);
     const user = await this.userService.findUserByUsernameOrEmail(body.usernameOrEmail);
     if (!user) {
       console.log(`User not found for identifier: ${body.usernameOrEmail}`);
@@ -49,7 +48,6 @@ export class UserController {
     }
     const payload = { username: user.username, sub: user._id };
     const jwtToken = this.jwtService.sign(payload);
-    console.log("uuuuuuUsing JWT secret: ", process.env.JWT_SECRET);
     console.log('Login successful, token:', jwtToken);
     return res.status(200).send({ jwtToken });
   }
